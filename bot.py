@@ -103,6 +103,41 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
         await interaction.response.send_message(
             "❌ I don't have permission to ban this member.", ephemeral=True
 )
+@bot.tree.command(name="timeout", description="Timeout a member for a specified duration")
+@commands.has_permissions(moderate_members=True)
+async def timeout(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    minutes: int,
+    reason: str = "No reason provided"
+):
+    if minutes <= 0:
+        await interaction.response.send_message(
+            "❌ Duration must be greater than 0 minutes.",
+            ephemeral=True
+        )
+        return
+
+    if member == interaction.user:
+        await interaction.response.send_message(
+            "❌ You can't timeout yourself.",
+            ephemeral=True
+        )
+        return
+
+    duration = timedelta(minutes=minutes)
+
+    try:
+        await member.timeout(duration, reason=reason)
+        await interaction.response.send_message(
+            f"⏱️ {member.mention} has been timed out for **{minutes} minutes**.\n"
+            f"**Reason:** {reason}"
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ I don't have permission to timeout this member.",
+            ephemeral=True
+        )
     
 import os
 
