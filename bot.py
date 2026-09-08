@@ -68,7 +68,7 @@ async def userinfo(interaction: discord.Interaction, member: discord.Member):
         value=" ".join(roles) if roles else "No roles",
         inline=False
     )
-@bot.tree.command(name="kick")
+@bot.tree.command(name="kick", description="Kick any member from server!")
 @commands.has_permissions(kick_members=True)
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
     if member == interaction.user:
