@@ -68,6 +68,7 @@ async def userinfo(interaction: discord.Interaction, member: discord.Member):
         value=" ".join(roles) if roles else "No roles",
         inline=False
     )
+    await interaction.response.send_message(embed=embed)
 @bot.tree.command(name="kick", description="Kick any member from server!")
 @commands.has_permissions(kick_members=True)
 async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
@@ -84,8 +85,25 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
         await interaction.response.send_message(
             "❌ I don't have permission to kick this member.", ephemeral=True
         )
+@bot.tree.command(name="ban", description="Ban any member from server!")
+@commands.has_permissions(ban_members=True)
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
+    if member == interaction.user:
+        await interaction.response.send_message(
+            "❌ You can't ban yourself.", ephemeral=True
+        )
+        return
 
-    await interaction.response.send_message(embed=embed)
+    try:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(
+            f"🔨 {member.mention} has been banned.\n**Reason:** {reason}"
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ I don't have permission to ban this member.", ephemeral=True
+)
+    
 import os
 
 bot.run(os.getenv("DISCORD_TOKEN"))
