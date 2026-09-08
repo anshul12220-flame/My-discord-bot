@@ -137,24 +137,36 @@ async def timeout(
         await interaction.response.send_message(
             "❌ I don't have permission to timeout this member.",
             ephemeral=True
-        )
 @bot.tree.command(name="blacklist", description="Blacklist a member from the server")
 async def blacklist(
     interaction: discord.Interaction,
     member: discord.Member,
+    channel: discord.TextChannel,
     reason: str = "No reason provided"
 ):
-    # Check for Staff role
-    staff_role = discord.utils.get(interaction.guild.roles, name="Staff")
+    staff_role = discord.utils.get(
+        interaction.guild.roles,
+        name="Staff"
+    )
 
-    if staff_role not in interaction.user.roles:
+    if staff_role is None:
         await interaction.response.send_message(
-            "❌ You need the **Staff** role to use this command.",
+            "❌ The **Staff** role doesn't exist.",
             ephemeral=True
         )
         return
 
-    # Find Blacklist role
+    # Staff and higher roles can use this command
+    if not any(
+        role.position >= staff_role.position
+        for role in interaction.user.roles
+    ):
+        await interaction.response.send_message(
+            "❌ You need the **Staff** role or a higher role to use this command.",
+            ephemeral=True
+        )
+        return
+
     blacklist_role = discord.utils.get(
         interaction.guild.roles,
         name="Blacklist"
@@ -167,19 +179,6 @@ async def blacklist(
         )
         return
 
-    # Find blacklist log channel
-    log_channel = discord.utils.get(
-        interaction.guild.text_channels,
-        name="blacklist-logs"
-    )
-
-    if log_channel is None:
-        await interaction.response.send_message(
-            "❌ The **blacklist-logs** channel doesn't exist.",
-            ephemeral=True
-        )
-        return
-
     try:
         # Remove all current roles except @everyone
         roles_to_remove = [
@@ -188,7 +187,10 @@ async def blacklist(
         ]
 
         if roles_to_remove:
-            await member.remove_roles(*roles_to_remove)
+            await member.remove_roles(
+                *roles_to_remove,
+                reason=reason
+            )
 
         # Give Blacklist role
         await member.add_roles(
@@ -196,13 +198,13 @@ async def blacklist(
             reason=reason
         )
 
-        # Automatically change nickname
+        # Change nickname automatically
         await member.edit(
             nick=f"[blacklisted] {member.display_name}",
             reason=reason
         )
 
-        # Create blacklist log embed
+        # Create blacklist embed
         embed = discord.Embed(
             title="Member Blacklist",
             color=discord.Color.red()
@@ -226,18 +228,21 @@ async def blacklist(
             inline=False
         )
 
-        await log_channel.send(embed=embed)
+        # Send embed to the channel selected by moderator
+        await channel.send(embed=embed)
 
         await interaction.response.send_message(
-            f"🔨 {member.mention} has been blacklisted.",
+            f"🔨 {member.mention} has been blacklisted.\n"
+            f"Log sent to {channel.mention}.",
             ephemeral=True
         )
 
     except discord.Forbidden:
         await interaction.response.send_message(
-            "❌ I don't have permission to manage this member's roles or nickname.",
+            "❌ I don't have permission to manage this member or send the log.",
             ephemeral=True
         )
+
     
 import os
 
