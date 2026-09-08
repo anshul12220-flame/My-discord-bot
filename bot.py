@@ -9,6 +9,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+print("Slash commands synced!")
     print(f"Logged in as {bot.user}")
 @bot.command()
 async def ping(ctx):
