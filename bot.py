@@ -137,6 +137,7 @@ async def timeout(
         await interaction.response.send_message(
             "❌ I don't have permission to timeout this member.",
             ephemeral=True
+        ) 
 @bot.tree.command(name="blacklist", description="Blacklist a member from the server")
 async def blacklist(
     interaction: discord.Interaction,
