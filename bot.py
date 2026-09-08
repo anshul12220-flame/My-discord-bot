@@ -138,6 +138,106 @@ async def timeout(
             "❌ I don't have permission to timeout this member.",
             ephemeral=True
         )
+@bot.tree.command(name="blacklist", description="Blacklist a member from the server")
+async def blacklist(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    reason: str = "No reason provided"
+):
+    # Check for Staff role
+    staff_role = discord.utils.get(interaction.guild.roles, name="Staff")
+
+    if staff_role not in interaction.user.roles:
+        await interaction.response.send_message(
+            "❌ You need the **Staff** role to use this command.",
+            ephemeral=True
+        )
+        return
+
+    # Find Blacklist role
+    blacklist_role = discord.utils.get(
+        interaction.guild.roles,
+        name="Blacklist"
+    )
+
+    if blacklist_role is None:
+        await interaction.response.send_message(
+            "❌ The **Blacklist** role doesn't exist.",
+            ephemeral=True
+        )
+        return
+
+    # Find blacklist log channel
+    log_channel = discord.utils.get(
+        interaction.guild.text_channels,
+        name="blacklist-logs"
+    )
+
+    if log_channel is None:
+        await interaction.response.send_message(
+            "❌ The **blacklist-logs** channel doesn't exist.",
+            ephemeral=True
+        )
+        return
+
+    try:
+        # Remove all current roles except @everyone
+        roles_to_remove = [
+            role for role in member.roles
+            if role != interaction.guild.default_role
+        ]
+
+        if roles_to_remove:
+            await member.remove_roles(*roles_to_remove)
+
+        # Give Blacklist role
+        await member.add_roles(
+            blacklist_role,
+            reason=reason
+        )
+
+        # Automatically change nickname
+        await member.edit(
+            nick=f"[blacklisted] {member.display_name}",
+            reason=reason
+        )
+
+        # Create blacklist log embed
+        embed = discord.Embed(
+            title="Member Blacklist",
+            color=discord.Color.red()
+        )
+
+        embed.add_field(
+            name="Blacklist User",
+            value=member.mention,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Blacklist By",
+            value=interaction.user.mention,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Reason",
+            value=reason,
+            inline=False
+        )
+
+        await log_channel.send(embed=embed)
+
+        await interaction.response.send_message(
+            f"🔨 {member.mention} has been blacklisted.",
+            ephemeral=True
+        )
+
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ I don't have permission to manage this member's roles or nickname.",
+            ephemeral=True
+        )
     
 import os
 
