@@ -9,5 +9,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+import os
 
-bot.run("YOUR_BOT_TOKEN")
+bot.run(os.getenv("DISCORD_TOKEN"))
