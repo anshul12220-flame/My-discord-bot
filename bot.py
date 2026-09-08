@@ -12,6 +12,9 @@ async def on_ready():
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pong!")
+@bot.tree.command(name="ping")
+async def slash_ping(interaction: discord.Interaction):
+    await interaction.response.send_message("Pong!")
 import os
 
 bot.run(os.getenv("DISCORD_TOKEN"))
