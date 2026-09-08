@@ -67,6 +67,22 @@ async def userinfo(interaction: discord.Interaction, member: discord.Member):
         value=" ".join(roles) if roles else "No roles",
         inline=False
     )
+@bot.tree.command(name="kick")
+@commands.has_permissions(kick_members=True)
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "No reason provided"):
+    if member == interaction.user:
+        await interaction.response.send_message("You can't kick yourself.", ephemeral=True)
+        return
+
+    try:
+        await member.kick(reason=reason)
+        await interaction.response.send_message(
+            f"✅ {member.mention} has been kicked.\n**Reason:** {reason}"
+        )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ I don't have permission to kick this member.", ephemeral=True
+        )
 
     await interaction.response.send_message(embed=embed)
 import os
