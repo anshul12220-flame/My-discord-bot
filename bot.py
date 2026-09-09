@@ -1,7 +1,7 @@
 import os
 import re
-import asyncio
 import unicodedata
+import asyncio
 from datetime import timedelta
 
 import discord
