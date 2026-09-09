@@ -682,19 +682,19 @@ class AddBotView(discord.ui.View):
     # MEMBER LOADING
     # =================================================
 
-        await interaction.followup.send(
-            "🔎 **FLAME is scanning your clan server...**\n\n"
-            "Please wait up to 12 seconds.",
-            ephemeral=True
-        )
+    await interaction.followup.send(
+        "🔎 **FLAME is scanning your clan server...**\n\n"
+        "Please wait up to 12 seconds.",
+        ephemeral=True
+    )
 
-        try:
+    try:
         await asyncio.wait_for(
             clan_server.chunk(cache=True),
             timeout=12
         )
 
-        except asyncio.TimeoutError:
+    except asyncio.TimeoutError:
         print(
             f"Member scan timed out for {clan_server.id}"
         )
@@ -708,7 +708,7 @@ class AddBotView(discord.ui.View):
         )
         return
 
-        except Exception as e:
+    except Exception as e:
         print(
             f"Member chunk error for {clan_server.id}: {e}"
         )
@@ -719,41 +719,32 @@ class AddBotView(discord.ui.View):
             ephemeral=True
         )
         return
-                  
+
     # =================================================
     # VERIFY MEMBER CACHE
     # =================================================
 
     if clan_server.member_count is None:
-
         await interaction.followup.send(
-
-            "❌ Discord did not provide the server member count. "
+            "❌ **Member count unavailable.**\n\n"
+            "Discord did not provide the server member count. "
             "Please try again.",
-
             ephemeral=True
         )
-
         return
 
-        cached_members = len(
-            clan_server.members
+    cached_members = len(clan_server.members)
+    expected_members = clan_server.member_count
+
+    if cached_members < expected_members:
+        await interaction.followup.send(
+            "❌ **Member scan incomplete.**\n\n"
+            f"FLAME loaded **{cached_members:,}** members, "
+            f"but Discord reports **{expected_members:,}**.\n\n"
+            "Please try again.",
+            ephemeral=True
         )
-
-        expected_members = clan_server.member_count
-
-
-        print(
-            f"Clan server: {clan_server.name}"
-        )
-
-        print(
-            f"Expected members: {expected_members}"
-        )
-
-        print(
-            f"Cached members: {cached_members}"
-        )
+        return
 
 
         # -------------------------------------------------
