@@ -682,10 +682,10 @@ class AddBotView(discord.ui.View):
     # MEMBER LOADING
     # =================================================
 
-    await interaction.followup.send(
-        "🔎 **FLAME is scanning your clan server...**\n\n"
-        "Please wait up to 12 seconds.",
-        ephemeral=True
+        await interaction.followup.send(
+            "🔎 **FLAME is scanning your clan server...**\n\n"
+            "Please wait up to 12 seconds.",
+            ephemeral=True
     )
 
     try:
