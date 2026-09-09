@@ -1,14 +1,145 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
+from datetime import timedelta
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# ==============================
+# CLAN REGISTRATION SYSTEM
+# ==============================
+
+OWNER_ROLE_NAME = "Owner"
+
+
+class ClanNameModal(discord.ui.Modal, title="Register Your Clan"):
+    clan_name = discord.ui.TextInput(
+        label="Clan Name",
+        placeholder="Enter your clan name",
+        required=True,
+        min_length=2,
+        max_length=50
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        clan_name = self.clan_name.value.strip()
+
+        await interaction.response.send_message(
+            f"✅ **Clan Name Received**\n\n"
+            f"**Clan:** `{clan_name}`\n\n"
+            f"Next step will be the region selection.",
+            ephemeral=True
+        )
+
+
+class ClanRegistrationView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="Register Clan",
+        style=discord.ButtonStyle.primary,
+        custom_id="clan_register_button"
+    )
+    async def register_clan(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_modal(ClanNameModal())
+
+
+@bot.tree.command(
+    name="post",
+    description="Post a clan registration panel."
+)
+@app_commands.describe(
+    channel="The channel where the clan registration panel will be posted."
+)
+async def post(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel
+):
+
+    # Must be used inside a server
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "❌ This command can only be used inside a server.",
+            ephemeral=True
+        )
+        return
+
+    # Check Administrator permission
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "❌ You need the **Administrator** permission to use this command.",
+            ephemeral=True
+        )
+        return
+
+    # Check Owner role
+    owner_role = discord.utils.get(
+        interaction.guild.roles,
+        name=OWNER_ROLE_NAME
+    )
+
+    if owner_role is None:
+        await interaction.response.send_message(
+            f"❌ The **{OWNER_ROLE_NAME}** role does not exist.",
+            ephemeral=True
+        )
+        return
+
+    if owner_role not in interaction.user.roles:
+        await interaction.response.send_message(
+            f"❌ You need the **{OWNER_ROLE_NAME}** role to use this command.",
+            ephemeral=True
+        )
+        return
+
+    # Registration embed
+    embed = discord.Embed(
+        title="Registery Clan",
+        description=(
+            "**Requirements for your BLED clan:**\n\n"
+            "The clan must have **75 members for each region** "
+            "(Asia/NA/SA/EU/OC).\n"
+            "You must be the **owner of your clan**.\n\n"
+            "Click the button below to register."
+        ),
+        color=discord.Color.blurple()
+    )
+
+    embed.set_footer(
+        text="BLED Clan Registration"
+    )
+
+    try:
+        await channel.send(
+            embed=embed,
+            view=ClanRegistrationView()
+        )
+
+        await interaction.response.send_message(
+            f"✅ Clan registration panel posted in {channel.mention}.",
+            ephemeral=True
+        )
+
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "❌ I don't have permission to send messages in that channel.",
+            ephemeral=True
+        )
 @bot.event
 async def on_ready():
+    bot.add_view(ClanRegistrationView())
+
     await bot.tree.sync()
+
     print("Slash commands synced!")
     print(f"Logged in as {bot.user}")
 @bot.command()
