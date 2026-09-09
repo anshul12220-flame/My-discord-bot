@@ -498,18 +498,9 @@ class RegionSelectView(
         )
 
 
-# =========================================================
-# ADD BOT / VERIFY VIEW
-# =========================================================
+class AddBotView(discord.ui.View):
 
-class AddBotView(
-    discord.ui.View
-):
-
-    def __init__(
-        self,
-        user_id
-    ):
+    def __init__(self, user_id):
 
         super().__init__(
             timeout=600
@@ -517,14 +508,11 @@ class AddBotView(
 
         self.user_id = user_id
 
-        # -------------------------------------------------
-        # CHECK APPLICATION ID
-        # -------------------------------------------------
+        # =================================================
+        # ADD FLAME BUTTON
+        # =================================================
 
-        if (
-            FLAME_APPLICATION_ID
-            != "PUT_YOUR_APPLICATION_ID_HERE"
-        ):
+        if FLAME_APPLICATION_ID != "PUT_YOUR_APPLICATION_ID_HERE":
 
             invite_url = (
                 "https://discord.com/oauth2/authorize"
@@ -543,8 +531,6 @@ class AddBotView(
 
         else:
 
-            # Temporary button if Application ID
-            # has not been entered yet.
             self.add_item(
                 discord.ui.Button(
                     label="Application ID Missing",
@@ -555,7 +541,7 @@ class AddBotView(
 
 
     # =====================================================
-    # I'VE ADDED FLAME BUTTON
+    # I'VE ADDED FLAME
     # =====================================================
 
     @discord.ui.button(
@@ -568,16 +554,23 @@ class AddBotView(
         button: discord.ui.Button
     ):
 
+        # -------------------------------------------------
+        # USER CHECK
+        # -------------------------------------------------
+
         if interaction.user.id != self.user_id:
 
             await interaction.response.send_message(
-
                 "❌ This registration belongs to another user.",
-
                 ephemeral=True
             )
 
             return
+
+
+        # -------------------------------------------------
+        # GET REGISTRATION
+        # -------------------------------------------------
 
         data = pending_registrations.get(
             self.user_id
@@ -586,13 +579,12 @@ class AddBotView(
         if data is None:
 
             await interaction.response.send_message(
-
                 "❌ Your registration session expired. Start again.",
-
                 ephemeral=True
             )
 
             return
+
 
         await interaction.response.defer(
             ephemeral=True
@@ -600,7 +592,7 @@ class AddBotView(
 
 
         # =================================================
-        # FIND SERVERS WHERE USER IS ACTUAL OWNER
+        # FIND USER'S OWNED SERVERS
         # =================================================
 
         owned_servers = []
@@ -615,7 +607,7 @@ class AddBotView(
 
 
         # =================================================
-        # NO SERVER FOUND
+        # NO OWNED SERVER
         # =================================================
 
         if not owned_servers:
@@ -626,12 +618,16 @@ class AddBotView(
 
                 description=(
 
-                    "❌ I couldn't find a Discord server where "
-                    "you are the **actual server owner**.\n\n"
+                    "❌ I couldn't find a server where you are "
+                    "the **actual Discord server owner**.\n\n"
 
-                    "Please add **FLAME** to your clan server "
-                    "and make sure you have the **👑 yellow "
-                    "server-owner crown**."
+                    "Please make sure:\n"
+
+                    "• You added **FLAME** to your clan server.\n"
+
+                    "• You have the **👑 yellow owner crown**.\n"
+
+                    "• FLAME is still inside the server."
                 ),
 
                 color=discord.Color.red()
@@ -648,7 +644,7 @@ class AddBotView(
 
 
         # =================================================
-        # SELECT CLAN SERVER
+        # FIND BEST SERVER
         # =================================================
 
         if len(owned_servers) == 1:
@@ -658,7 +654,6 @@ class AddBotView(
         else:
 
             best_server = None
-
             best_score = -1
 
             for guild in owned_servers:
@@ -667,12 +662,11 @@ class AddBotView(
 
                 for region in data["regions"]:
 
-                    roles = find_region_roles(
+                    if find_region_roles(
                         guild,
                         region
-                    )
+                    ):
 
-                    if roles:
                         score += 1
 
                 if score > best_score:
@@ -685,11 +679,21 @@ class AddBotView(
 
 
         # =================================================
-        # LOAD MEMBERS
+        # MEMBER LOADING
         # =================================================
+
+        await interaction.followup.send(
+
+            "🔎 **FLAME is scanning your clan server...**\n\n"
+            "Please wait while I load the server members.",
+
+            ephemeral=True
+        )
+
 
         try:
 
+            # Request the complete member list.
             await clan_server.chunk(
                 cache=True
             )
@@ -697,17 +701,124 @@ class AddBotView(
         except Exception as e:
 
             print(
-                f"Member chunk error: {e}"
+                f"Member chunk error for "
+                f"{clan_server.id}: {e}"
             )
+
+            error_embed = discord.Embed(
+
+                title="Verification Failed",
+
+                description=(
+
+                    "❌ I couldn't load the complete member "
+                    "list of your clan server.\n\n"
+
+                    "This can happen if Discord's member "
+                    "data request times out.\n\n"
+
+                    "Please make sure **Server Members Intent** "
+                    "is enabled for FLAME and try again."
+                ),
+
+                color=discord.Color.red()
+            )
+
+            await interaction.followup.send(
+
+                embed=error_embed,
+
+                ephemeral=True
+            )
+
+            return
 
 
         # =================================================
-        # VERIFY REGIONS
+        # VERIFY MEMBER CACHE
+        # =================================================
+
+        if clan_server.member_count is None:
+
+            await interaction.followup.send(
+
+                "❌ Discord did not provide the server member count. "
+                "Please try again.",
+
+                ephemeral=True
+            )
+
+            return
+
+
+        cached_members = len(
+            clan_server.members
+        )
+
+        expected_members = clan_server.member_count
+
+
+        print(
+            f"Clan server: {clan_server.name}"
+        )
+
+        print(
+            f"Expected members: {expected_members}"
+        )
+
+        print(
+            f"Cached members: {cached_members}"
+        )
+
+
+        # -------------------------------------------------
+        # DO NOT SCAN INCOMPLETE DATA
+        # -------------------------------------------------
+
+        if cached_members < expected_members:
+
+            error_embed = discord.Embed(
+
+                title="Verification Incomplete",
+
+                description=(
+
+                    "❌ I couldn't load all members of your "
+                    "clan server.\n\n"
+
+                    f"Discord reports **{expected_members}** "
+                    "members, but FLAME only loaded "
+                    f"**{cached_members}**.\n\n"
+
+                    "Because the member list is incomplete, "
+                    "I will **not approve or deny** your clan."
+                ),
+
+                color=discord.Color.orange()
+            )
+
+            await interaction.followup.send(
+
+                embed=error_embed,
+
+                ephemeral=True
+            )
+
+            print(
+                "Verification stopped: incomplete member cache."
+            )
+
+            return
+
+
+        # =================================================
+        # REGION VERIFICATION
         # =================================================
 
         results = []
 
         failed = False
+
 
         for region in data["regions"]:
 
@@ -717,6 +828,7 @@ class AddBotView(
 
                 region
             )
+
 
             if not roles:
 
@@ -735,6 +847,7 @@ class AddBotView(
                     "reason":
                     "No matching region role found."
                 })
+
 
             elif count < MIN_REGION_MEMBERS:
 
@@ -758,6 +871,7 @@ class AddBotView(
                     )
                 })
 
+
             else:
 
                 results.append({
@@ -776,31 +890,31 @@ class AddBotView(
 
 
         # =================================================
-        # BUILD RESULT TEXT
+        # RESULT TEXT
         # =================================================
 
         result_text = ""
 
         for result in results:
 
-            region = result["region"]
-
-            count = result["count"]
-
             if result["passed"]:
 
                 result_text += (
 
-                    f"**{region}** — "
-                    f"`{count}/{MIN_REGION_MEMBERS}` ✅\n"
+                    f"**{result['region']}** — "
+
+                    f"`{result['count']}/{MIN_REGION_MEMBERS}` "
+                    "✅\n"
                 )
 
             else:
 
                 result_text += (
 
-                    f"**{region}** — "
-                    f"`{count}/{MIN_REGION_MEMBERS}` ❌\n"
+                    f"**{result['region']}** — "
+
+                    f"`{result['count']}/{MIN_REGION_MEMBERS}` "
+                    "❌\n"
 
                     f"> {result['reason']}\n"
                 )
@@ -843,7 +957,7 @@ class AddBotView(
 
                     f"{interaction.user.mention}\n"
 
-                    "👑 Verified as actual server owner"
+                    "👑 Actual Discord server owner"
                 ),
 
                 inline=False
@@ -858,9 +972,9 @@ class AddBotView(
             )
 
 
-            # =================================================
-            # FAILURE LOG
-            # =================================================
+            # ------------------------------------------------
+            # LOG
+            # ------------------------------------------------
 
             log_embed = discord.Embed(
 
@@ -917,6 +1031,19 @@ class AddBotView(
 
             log_embed.add_field(
 
+                name="Member Scan",
+
+                value=(
+
+                    f"Loaded `{cached_members}` / "
+                    f"`{expected_members}` members"
+                ),
+
+                inline=False
+            )
+
+            log_embed.add_field(
+
                 name="Region Scan",
 
                 value=result_text,
@@ -938,9 +1065,9 @@ class AddBotView(
             )
 
 
-            # =================================================
-            # LEAVE CLAN SERVER
-            # =================================================
+            # ------------------------------------------------
+            # LEAVE SERVER
+            # ------------------------------------------------
 
             try:
 
@@ -978,7 +1105,6 @@ class AddBotView(
                 f"{result_text}\n"
 
                 "All selected region requirements have been "
-
                 "**successfully verified**.\n\n"
 
                 "✅ Your clan has been registered successfully."
@@ -1081,6 +1207,19 @@ class AddBotView(
             inline=False
         )
 
+        log_embed.add_field(
+
+            name="Member Scan",
+
+            value=(
+
+                f"Loaded `{cached_members}` / "
+                f"`{expected_members}` members"
+            ),
+
+            inline=False
+        )
+
 
         detailed_regions = ""
 
@@ -1097,7 +1236,8 @@ class AddBotView(
 
                 f"**{result['region']}** — "
 
-                f"`{result['count']}/{MIN_REGION_MEMBERS}` ✅\n"
+                f"`{result['count']}/{MIN_REGION_MEMBERS}` "
+                "✅\n"
 
                 f"Detected role(s): {role_names}\n\n"
             )
@@ -1137,7 +1277,7 @@ class AddBotView(
         except Exception as e:
 
             print(
-                f"Failed to leave clan server: {e}"
+                f"Failed to leave server: {e}"
             )
 
 
@@ -1146,8 +1286,7 @@ class AddBotView(
             self.user_id,
 
             None
-        )
-
+            )
 
 # =========================================================
 # LOG CHANNEL SELECTOR
