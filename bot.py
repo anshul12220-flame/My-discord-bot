@@ -677,12 +677,13 @@ class AddBotView(discord.ui.View):
                     best_server = guild
 
             clan_server = best_server
+            
 
     # =================================================
     # MEMBER LOADING
     # =================================================
     
-    await interaction.followup.send(
+await interaction.followup.send(
         "🔎 **FLAME is scanning your clan server...**\n\n"
         "Please wait up to 12 seconds.",
         ephemeral=True
@@ -746,7 +747,7 @@ class AddBotView(discord.ui.View):
         )
         return
 
-
+        
         # -------------------------------------------------
         # DO NOT SCAN INCOMPLETE DATA
         # -------------------------------------------------
