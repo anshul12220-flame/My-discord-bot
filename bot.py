@@ -695,7 +695,7 @@ try:
             timeout=12
         )
 
-    except asyncio.TimeoutError:
+except asyncio.TimeoutError:
         print(
             f"Member scan timed out for {clan_server.id}"
         )
@@ -709,7 +709,7 @@ try:
         )
         return
 
-    except Exception as e:
+except Exception as e:
         print(
             f"Member chunk error for {clan_server.id}: {e}"
         )
