@@ -14,15 +14,26 @@ from discord import app_commands
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# IMPORTANT:
-# Change this to the exact name of the Owner role
-# that is allowed to use /post clan registration.
+# Your FLAME Bot Application ID / Client ID
+# Find it in:
+# Discord Developer Portal
+# -> Your Application
+# -> General Information
+# -> Application ID
+#
+# Example:
+# FLAME_APPLICATION_ID = "123456789012345678"
+
+FLAME_APPLICATION_ID = "1546783120676884490"
+
+
+# Exact name of the Owner role allowed to post registration panel
 OWNER_ROLE_NAME = "Owner"
 
 # Minimum members required for EACH selected region
 MIN_REGION_MEMBERS = 75
 
-# Maximum regions a clan can select
+# Maximum number of regions that can be selected
 MAX_REGIONS = 3
 
 
@@ -95,9 +106,6 @@ REGION_KEYWORDS = {
 
 
 def normalize_role_name(name):
-    """
-    Removes emoji/symbols and normalizes role names.
-    """
 
     name = unicodedata.normalize(
         "NFKC",
@@ -126,17 +134,6 @@ def normalize_role_name(name):
 
 
 def find_region_roles(guild, region):
-    """
-    Finds all roles that represent the selected region.
-
-    Example:
-    🌏 Asia
-    Asia Members
-    Asia Region
-    ASIA
-
-    can all be detected as Asia.
-    """
 
     keywords = REGION_KEYWORDS.get(
         region,
@@ -166,7 +163,7 @@ def find_region_roles(guild, region):
 
             keyword_words = normalized_keyword.split()
 
-            # Short region abbreviations
+            # Short abbreviations
             if normalized_keyword in {
                 "na",
                 "sa",
@@ -177,6 +174,7 @@ def find_region_roles(guild, region):
                 if normalized_keyword in words:
 
                     matching_roles.append(role)
+
                     break
 
             # Multi-word regions
@@ -188,26 +186,22 @@ def find_region_roles(guild, region):
                 ):
 
                     matching_roles.append(role)
+
                     break
 
-            # Normal region names
+            # Normal region name
             else:
 
                 if normalized_keyword in words:
 
                     matching_roles.append(role)
+
                     break
 
     return matching_roles
 
 
 def count_region_members(guild, region):
-    """
-    Counts members for a region.
-
-    A member is counted only once for that region,
-    even if they have multiple matching region roles.
-    """
 
     roles = find_region_roles(
         guild,
@@ -248,7 +242,6 @@ def get_registration_log_channel(guild):
     )
 
     if not channel_id:
-
         return None
 
     return guild.get_channel(
@@ -266,7 +259,6 @@ async def send_registration_log(
     )
 
     if channel is None:
-
         return
 
     try:
@@ -314,22 +306,28 @@ class ClanNameModal(discord.ui.Modal):
         pending_registrations[
             interaction.user.id
         ] = {
+
             "clan_name": self.clan_name.value,
+
             "regions": [],
+
             "source_guild_id": interaction.guild.id
         }
 
         await interaction.response.send_message(
+
             "Select the regions your clan wants to register for.",
+
             view=RegionSelectView(
                 interaction.user.id
             ),
+
             ephemeral=True
         )
 
 
 # =========================================================
-# MAIN REGISTER BUTTON
+# REGISTER CLAN BUTTON
 # =========================================================
 
 class ClanRegistrationView(
@@ -404,13 +402,15 @@ class RegionSelect(
                 value="Oceanic",
                 description="Oceanic region"
             )
-
         ]
 
         super().__init__(
             placeholder="Select your regions",
+
             min_values=1,
+
             max_values=MAX_REGIONS,
+
             options=options
         )
 
@@ -422,7 +422,9 @@ class RegionSelect(
         if interaction.user.id != self.user_id:
 
             await interaction.response.send_message(
+
                 "❌ This registration menu belongs to another user.",
+
                 ephemeral=True
             )
 
@@ -435,7 +437,9 @@ class RegionSelect(
         if data is None:
 
             await interaction.response.send_message(
+
                 "❌ Your registration session expired. Start again.",
+
                 ephemeral=True
             )
 
@@ -445,22 +449,31 @@ class RegionSelect(
             self.values
         )
 
+        selected_regions = "\n".join(
+            f"• {region}"
+            for region in self.values
+        )
+
         await interaction.response.edit_message(
+
             content=(
+
                 "**Your selected regions:**\n\n"
-                + "\n".join(
-                    f"• {region}"
-                    for region in self.values
-                )
-                + "\n\n"
+
+                f"{selected_regions}\n\n"
+
                 "## Next Step\n"
-                "You have to add **FLAME bot** into your clan "
+
+                "You have to add **FLAME** to your clan "
                 "so we can scan your clan!\n\n"
-                "Click **Add FLAME to Clan** below and add the "
-                "bot to your clan's Discord server.\n\n"
-                "After adding FLAME, return here and click "
+
+                "Click **Add FLAME to Clan** and add FLAME "
+                "to your clan's Discord server.\n\n"
+
+                "After adding FLAME, come back and click "
                 "**I've Added FLAME**."
             ),
+
             view=AddBotView(
                 self.user_id
             )
@@ -504,27 +517,46 @@ class AddBotView(
 
         self.user_id = user_id
 
-    # -----------------------------------------------------
-    # ADD FLAME BUTTON
-    # -----------------------------------------------------
+        # -------------------------------------------------
+        # CHECK APPLICATION ID
+        # -------------------------------------------------
 
-    @discord.ui.button(
-        label="Add FLAME to Clan",
-        style=discord.ButtonStyle.link,
-        url="https://discord.com/oauth2/authorize?client_id=0&permissions=8&scope=bot%20applications.commands"
-    )
-    async def add_bot_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+        if (
+            FLAME_APPLICATION_ID
+            != "PUT_YOUR_APPLICATION_ID_HERE"
+        ):
 
-        # Discord link buttons do not execute this callback.
-        pass
+            invite_url = (
+                "https://discord.com/oauth2/authorize"
+                f"?client_id={FLAME_APPLICATION_ID}"
+                "&permissions=8"
+                "&scope=bot%20applications.commands"
+            )
 
-    # -----------------------------------------------------
-    # VERIFY BUTTON
-    # -----------------------------------------------------
+            self.add_item(
+                discord.ui.Button(
+                    label="Add FLAME to Clan",
+                    style=discord.ButtonStyle.link,
+                    url=invite_url
+                )
+            )
+
+        else:
+
+            # Temporary button if Application ID
+            # has not been entered yet.
+            self.add_item(
+                discord.ui.Button(
+                    label="Application ID Missing",
+                    style=discord.ButtonStyle.link,
+                    url="https://discord.com/developers/applications"
+                )
+            )
+
+
+    # =====================================================
+    # I'VE ADDED FLAME BUTTON
+    # =====================================================
 
     @discord.ui.button(
         label="I've Added FLAME",
@@ -539,7 +571,9 @@ class AddBotView(
         if interaction.user.id != self.user_id:
 
             await interaction.response.send_message(
+
                 "❌ This registration belongs to another user.",
+
                 ephemeral=True
             )
 
@@ -552,7 +586,9 @@ class AddBotView(
         if data is None:
 
             await interaction.response.send_message(
+
                 "❌ Your registration session expired. Start again.",
+
                 ephemeral=True
             )
 
@@ -562,8 +598,9 @@ class AddBotView(
             ephemeral=True
         )
 
+
         # =================================================
-        # FIND THE CLAN SERVER
+        # FIND SERVERS WHERE USER IS ACTUAL OWNER
         # =================================================
 
         owned_servers = []
@@ -576,38 +613,43 @@ class AddBotView(
                     guild
                 )
 
-        # -------------------------------------------------
+
+        # =================================================
         # NO SERVER FOUND
-        # -------------------------------------------------
+        # =================================================
 
         if not owned_servers:
 
             embed = discord.Embed(
+
                 title="Clan Server Not Found",
+
                 description=(
+
                     "❌ I couldn't find a Discord server where "
                     "you are the **actual server owner**.\n\n"
+
                     "Please add **FLAME** to your clan server "
                     "and make sure you have the **👑 yellow "
                     "server-owner crown**."
                 ),
+
                 color=discord.Color.red()
             )
 
             await interaction.followup.send(
+
                 embed=embed,
+
                 ephemeral=True
             )
 
             return
 
-        # =================================================
-        # SELECT SERVER
-        # =================================================
 
-        # If the user owns only one server, use it.
-        # If multiple owned servers contain FLAME,
-        # we use the one with the most matching region roles.
+        # =================================================
+        # SELECT CLAN SERVER
+        # =================================================
 
         if len(owned_servers) == 1:
 
@@ -616,6 +658,7 @@ class AddBotView(
         else:
 
             best_server = None
+
             best_score = -1
 
             for guild in owned_servers:
@@ -630,15 +673,16 @@ class AddBotView(
                     )
 
                     if roles:
-
                         score += 1
 
                 if score > best_score:
 
                     best_score = score
+
                     best_server = guild
 
             clan_server = best_server
+
 
         # =================================================
         # LOAD MEMBERS
@@ -656,6 +700,7 @@ class AddBotView(
                 f"Member chunk error: {e}"
             )
 
+
         # =================================================
         # VERIFY REGIONS
         # =================================================
@@ -667,7 +712,9 @@ class AddBotView(
         for region in data["regions"]:
 
             count, roles = count_region_members(
+
                 clan_server,
+
                 region
             )
 
@@ -676,11 +723,17 @@ class AddBotView(
                 failed = True
 
                 results.append({
+
                     "region": region,
+
                     "count": count,
+
                     "roles": [],
+
                     "passed": False,
-                    "reason": "No matching region role found."
+
+                    "reason":
+                    "No matching region role found."
                 })
 
             elif count < MIN_REGION_MEMBERS:
@@ -688,12 +741,19 @@ class AddBotView(
                 failed = True
 
                 results.append({
+
                     "region": region,
+
                     "count": count,
+
                     "roles": roles,
+
                     "passed": False,
+
                     "reason": (
+
                         f"Only {count} members. "
+
                         f"{MIN_REGION_MEMBERS} required."
                     )
                 })
@@ -701,15 +761,22 @@ class AddBotView(
             else:
 
                 results.append({
+
                     "region": region,
+
                     "count": count,
+
                     "roles": roles,
+
                     "passed": True,
-                    "reason": "Requirement passed."
+
+                    "reason":
+                    "Requirement passed."
                 })
 
+
         # =================================================
-        # BUILD REGION RESULT
+        # BUILD RESULT TEXT
         # =================================================
 
         result_text = ""
@@ -717,11 +784,13 @@ class AddBotView(
         for result in results:
 
             region = result["region"]
+
             count = result["count"]
 
             if result["passed"]:
 
                 result_text += (
+
                     f"**{region}** — "
                     f"`{count}/{MIN_REGION_MEMBERS}` ✅\n"
                 )
@@ -729,10 +798,13 @@ class AddBotView(
             else:
 
                 result_text += (
+
                     f"**{region}** — "
                     f"`{count}/{MIN_REGION_MEMBERS}` ❌\n"
+
                     f"> {result['reason']}\n"
                 )
+
 
         # =================================================
         # FAILED
@@ -741,91 +813,134 @@ class AddBotView(
         if failed:
 
             embed = discord.Embed(
+
                 title="Clan Registration Denied",
+
                 description=(
+
                     f"**Clan:** {data['clan_name']}\n\n"
+
                     f"{result_text}"
                 ),
+
                 color=discord.Color.red()
             )
 
             embed.add_field(
+
                 name="Clan Server",
+
                 value=clan_server.name,
+
                 inline=False
             )
 
             embed.add_field(
+
                 name="Server Owner",
+
                 value=(
+
                     f"{interaction.user.mention}\n"
+
                     "👑 Verified as actual server owner"
                 ),
+
                 inline=False
             )
 
+
             await interaction.followup.send(
+
                 embed=embed,
+
                 ephemeral=True
             )
 
-            # ------------------------------------------------
-            # LOG
-            # ------------------------------------------------
+
+            # =================================================
+            # FAILURE LOG
+            # =================================================
 
             log_embed = discord.Embed(
+
                 title="❌ Clan Registration Failed",
+
                 color=discord.Color.red()
             )
 
             log_embed.add_field(
+
                 name="Clan",
+
                 value=data["clan_name"],
+
                 inline=True
             )
 
             log_embed.add_field(
+
                 name="Applicant",
+
                 value=(
+
                     f"{interaction.user.mention}\n"
+
                     f"`{interaction.user.id}`"
                 ),
+
                 inline=True
             )
 
             log_embed.add_field(
+
                 name="Clan Server",
+
                 value=(
+
                     f"{clan_server.name}\n"
+
                     f"`{clan_server.id}`"
                 ),
+
                 inline=False
             )
 
             log_embed.add_field(
+
                 name="Server Ownership",
+
                 value="👑 Actual Discord Server Owner",
+
                 inline=False
             )
 
             log_embed.add_field(
+
                 name="Region Scan",
+
                 value=result_text,
+
                 inline=False
             )
 
             log_embed.set_footer(
+
                 text="FLAME Clan Registration System"
             )
 
+
             await send_registration_log(
+
                 interaction.guild,
+
                 log_embed
             )
 
-            # ------------------------------------------------
+
+            # =================================================
             # LEAVE CLAN SERVER
-            # ------------------------------------------------
+            # =================================================
 
             try:
 
@@ -837,124 +952,182 @@ class AddBotView(
                     f"Failed to leave server: {e}"
                 )
 
+
             pending_registrations.pop(
+
                 self.user_id,
+
                 None
             )
 
             return
+
 
         # =================================================
         # APPROVED
         # =================================================
 
         embed = discord.Embed(
+
             title="Clan Registration Approved",
+
             description=(
+
                 f"## {data['clan_name']}\n\n"
+
                 f"{result_text}\n"
+
                 "All selected region requirements have been "
+
                 "**successfully verified**.\n\n"
+
                 "✅ Your clan has been registered successfully."
             ),
+
             color=discord.Color.green()
         )
 
         embed.add_field(
+
             name="Clan Server",
+
             value=clan_server.name,
+
             inline=True
         )
 
         embed.add_field(
+
             name="Server Owner",
+
             value=(
+
                 f"{interaction.user.mention}\n"
+
                 "👑 Actual Discord Server Owner"
             ),
+
             inline=True
         )
 
+
         await interaction.followup.send(
+
             embed=embed,
+
             ephemeral=True
         )
+
 
         # =================================================
         # APPROVAL LOG
         # =================================================
 
         log_embed = discord.Embed(
+
             title="✅ Clan Registration Approved",
+
             color=discord.Color.green()
         )
 
         log_embed.add_field(
+
             name="Clan",
+
             value=data["clan_name"],
+
             inline=True
         )
 
         log_embed.add_field(
+
             name="Applicant",
+
             value=(
+
                 f"{interaction.user.mention}\n"
+
                 f"`{interaction.user.id}`"
             ),
+
             inline=True
         )
 
         log_embed.add_field(
+
             name="Clan Server",
+
             value=(
+
                 f"{clan_server.name}\n"
+
                 f"`{clan_server.id}`"
             ),
+
             inline=False
         )
 
         log_embed.add_field(
+
             name="Server Ownership",
+
             value=(
+
                 f"👑 {interaction.user.mention}\n"
+
                 "Verified as actual Discord server owner"
             ),
+
             inline=False
         )
 
-        # Detailed role information
+
         detailed_regions = ""
 
         for result in results:
 
             role_names = ", ".join(
+
                 f"`{role.name}`"
+
                 for role in result["roles"]
             )
 
             detailed_regions += (
+
                 f"**{result['region']}** — "
+
                 f"`{result['count']}/{MIN_REGION_MEMBERS}` ✅\n"
+
                 f"Detected role(s): {role_names}\n\n"
             )
 
+
         log_embed.add_field(
+
             name="Region Verification",
+
             value=detailed_regions,
+
             inline=False
         )
 
         log_embed.set_footer(
+
             text="FLAME Clan Registration System"
         )
 
+
         await send_registration_log(
+
             interaction.guild,
+
             log_embed
         )
 
+
         # =================================================
-        # LEAVE SERVER
+        # LEAVE CLAN SERVER
         # =================================================
 
         try:
@@ -967,8 +1140,11 @@ class AddBotView(
                 f"Failed to leave clan server: {e}"
             )
 
+
         pending_registrations.pop(
+
             self.user_id,
+
             None
         )
 
@@ -984,11 +1160,15 @@ class RegistrationLogChannelSelect(
     def __init__(self):
 
         super().__init__(
+
             placeholder="Select registration log channel",
+
             channel_types=[
                 discord.ChannelType.text
             ],
+
             min_values=1,
+
             max_values=1
         )
 
@@ -1004,10 +1184,13 @@ class RegistrationLogChannelSelect(
         ] = channel.id
 
         await interaction.response.edit_message(
+
             content=(
+
                 f"✅ Registration log channel set to "
                 f"{channel.mention}."
             ),
+
             view=None
         )
 
@@ -1032,14 +1215,23 @@ class RegistrationLogView(
 # =========================================================
 
 post_group = app_commands.Group(
+
     name="post",
+
     description="Post FLAME system panels."
 )
 
 
+# =========================================================
+# /POST CLAN GROUP
+# =========================================================
+
 clan_group = app_commands.Group(
+
     name="clan",
+
     description="Clan systems.",
+
     parent=post_group
 )
 
@@ -1049,125 +1241,166 @@ clan_group = app_commands.Group(
 # =========================================================
 
 @clan_group.command(
+
     name="registration",
+
     description="Post the BLED clan registration panel."
 )
+
 @app_commands.describe(
+
     channel="Channel where the registration panel will be posted."
 )
+
 async def clan_registration(
+
     interaction: discord.Interaction,
+
     channel: discord.TextChannel
 ):
 
-    # -----------------------------------------------------
+    # =====================================================
     # ADMINISTRATOR CHECK
-    # -----------------------------------------------------
+    # =====================================================
 
     if not interaction.user.guild_permissions.administrator:
 
         await interaction.response.send_message(
+
             "❌ You need **Administrator** permission.",
+
             ephemeral=True
         )
 
         return
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # OWNER ROLE CHECK
-    # -----------------------------------------------------
+    # =====================================================
 
     owner_role = discord.utils.get(
+
         interaction.guild.roles,
+
         name=OWNER_ROLE_NAME
     )
 
     if owner_role is None:
 
         await interaction.response.send_message(
+
             (
+
                 f"❌ The Owner role `{OWNER_ROLE_NAME}` "
                 "does not exist.\n\n"
-                "Change `OWNER_ROLE_NAME` at the top of "
-                "the code to your actual Owner role name."
+
+                "Change `OWNER_ROLE_NAME` at the top "
+                "of the code to your actual Owner role name."
             ),
+
             ephemeral=True
         )
 
         return
+
 
     if owner_role not in interaction.user.roles:
 
         await interaction.response.send_message(
+
             "❌ You need the configured **Owner** role.",
+
             ephemeral=True
         )
 
         return
 
-    # -----------------------------------------------------
-    # PANEL
-    # -----------------------------------------------------
+
+    # =====================================================
+    # REGISTRATION EMBED
+    # =====================================================
 
     embed = discord.Embed(
+
         title="Registery Clan",
+
         description=(
+
             "**Requirements for your BLED clan:**\n\n"
+
             "• The clan must have **75 members** for "
             "each selected region.\n"
+
             "• Available regions: **Asia / NA / SA / EU / OC**.\n"
+
             "• You must be the **actual owner** of your "
             "clan's Discord server.\n\n"
+
             "Click the button below to register your clan."
         ),
+
         color=discord.Color.blurple()
     )
 
     embed.set_footer(
+
         text="BLED Clan Registration"
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # SEND PANEL
-    # -----------------------------------------------------
+    # =====================================================
 
     try:
 
         await channel.send(
+
             embed=embed,
+
             view=ClanRegistrationView()
         )
 
     except discord.Forbidden:
 
         await interaction.response.send_message(
+
             (
+
                 f"❌ I cannot send messages in "
                 f"{channel.mention}."
             ),
+
             ephemeral=True
         )
 
         return
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # SELECT LOG CHANNEL
-    # -----------------------------------------------------
+    # =====================================================
 
     await interaction.response.send_message(
+
         (
+
             f"✅ Clan registration panel posted in "
             f"{channel.mention}.\n\n"
+
             "Select the channel where registration logs "
             "should be sent."
         ),
+
         view=RegistrationLogView(),
+
         ephemeral=True
     )
 
 
 # =========================================================
-# ADD COMMAND GROUP
+# REGISTER COMMAND GROUP
 # =========================================================
 
 bot.tree.add_command(
@@ -1183,6 +1416,7 @@ bot.tree.add_command(
 async def ping(ctx):
 
     await ctx.send(
+
         f"🏓 Pong! `{round(bot.latency * 1000)}ms`"
     )
 
@@ -1192,14 +1426,19 @@ async def ping(ctx):
 # =========================================================
 
 @bot.tree.command(
+
     name="ping",
+
     description="Check bot latency."
 )
+
 async def slash_ping(
+
     interaction: discord.Interaction
 ):
 
     await interaction.response.send_message(
+
         f"🏓 Pong! `{round(bot.latency * 1000)}ms`"
     )
 
@@ -1209,10 +1448,14 @@ async def slash_ping(
 # =========================================================
 
 @bot.tree.command(
+
     name="serverinfo",
+
     description="Show server information."
 )
+
 async def serverinfo(
+
     interaction: discord.Interaction
 ):
 
@@ -1221,56 +1464,81 @@ async def serverinfo(
     if guild is None:
 
         await interaction.response.send_message(
+
             "❌ This command can only be used inside a server.",
+
             ephemeral=True
         )
 
         return
 
+
     embed = discord.Embed(
+
         title=guild.name,
+
         color=discord.Color.blurple()
     )
 
     embed.add_field(
+
         name="Server ID",
+
         value=f"`{guild.id}`",
+
         inline=False
     )
 
     embed.add_field(
+
         name="Members",
+
         value=str(guild.member_count),
+
         inline=True
     )
 
     embed.add_field(
+
         name="Channels",
+
         value=str(len(guild.channels)),
+
         inline=True
     )
 
     embed.add_field(
+
         name="Roles",
+
         value=str(len(guild.roles)),
+
         inline=True
     )
+
 
     if guild.owner:
 
         embed.add_field(
+
             name="Owner",
+
             value=guild.owner.mention,
+
             inline=False
         )
+
 
     if guild.icon:
 
         embed.set_thumbnail(
+
             url=guild.icon.url
         )
 
+
     await interaction.response.send_message(
+
         embed=embed
     )
 
@@ -1280,63 +1548,95 @@ async def serverinfo(
 # =========================================================
 
 @bot.tree.command(
+
     name="userinfo",
+
     description="Show information about a user."
 )
+
 @app_commands.describe(
+
     user="User to inspect."
 )
+
 async def userinfo(
+
     interaction: discord.Interaction,
+
     user: discord.Member
 ):
 
     embed = discord.Embed(
+
         title=f"User Info — {user}",
+
         color=user.color
     )
 
     embed.add_field(
+
         name="Username",
+
         value=user.name,
+
         inline=True
     )
 
     embed.add_field(
+
         name="ID",
+
         value=f"`{user.id}`",
+
         inline=True
     )
 
     embed.add_field(
+
         name="Joined Server",
+
         value=(
+
             discord.utils.format_dt(
+
                 user.joined_at,
+
                 style="F"
             )
+
             if user.joined_at
+
             else "Unknown"
         ),
+
         inline=False
     )
 
     embed.add_field(
+
         name="Account Created",
+
         value=discord.utils.format_dt(
+
             user.created_at,
+
             style="F"
         ),
+
         inline=False
     )
+
 
     if user.avatar:
 
         embed.set_thumbnail(
+
             url=user.avatar.url
         )
 
+
     await interaction.response.send_message(
+
         embed=embed
     )
 
@@ -1346,40 +1646,58 @@ async def userinfo(
 # =========================================================
 
 @bot.tree.command(
+
     name="kick",
+
     description="Kick a member."
 )
+
 @app_commands.describe(
+
     user="Member to kick.",
+
     reason="Reason for kicking."
 )
+
 @app_commands.checks.has_permissions(
+
     kick_members=True
 )
+
 async def kick(
+
     interaction: discord.Interaction,
+
     user: discord.Member,
+
     reason: str = "No reason provided"
 ):
 
     if user == interaction.user:
 
         await interaction.response.send_message(
+
             "❌ You cannot kick yourself.",
+
             ephemeral=True
         )
 
         return
 
+
     try:
 
         await user.kick(
+
             reason=reason
         )
 
         await interaction.response.send_message(
+
             (
+
                 f"✅ {user.mention} has been kicked.\n"
+
                 f"Reason: `{reason}`"
             )
         )
@@ -1387,7 +1705,9 @@ async def kick(
     except discord.Forbidden:
 
         await interaction.response.send_message(
+
             "❌ I cannot kick that member.",
+
             ephemeral=True
         )
 
@@ -1397,40 +1717,58 @@ async def kick(
 # =========================================================
 
 @bot.tree.command(
+
     name="ban",
+
     description="Ban a member."
 )
+
 @app_commands.describe(
+
     user="Member to ban.",
+
     reason="Reason for banning."
 )
+
 @app_commands.checks.has_permissions(
+
     ban_members=True
 )
+
 async def ban(
+
     interaction: discord.Interaction,
+
     user: discord.Member,
+
     reason: str = "No reason provided"
 ):
 
     if user == interaction.user:
 
         await interaction.response.send_message(
+
             "❌ You cannot ban yourself.",
+
             ephemeral=True
         )
 
         return
 
+
     try:
 
         await user.ban(
+
             reason=reason
         )
 
         await interaction.response.send_message(
+
             (
+
                 f"🔨 {user.mention} has been banned.\n"
+
                 f"Reason: `{reason}`"
             )
         )
@@ -1438,7 +1776,9 @@ async def ban(
     except discord.Forbidden:
 
         await interaction.response.send_message(
+
             "❌ I cannot ban that member.",
+
             ephemeral=True
         )
 
@@ -1448,57 +1788,82 @@ async def ban(
 # =========================================================
 
 @bot.tree.command(
+
     name="timeout",
+
     description="Timeout a member."
 )
+
 @app_commands.describe(
+
     user="Member to timeout.",
+
     minutes="Timeout duration in minutes.",
+
     reason="Reason for timeout."
 )
+
 @app_commands.checks.has_permissions(
+
     moderate_members=True
 )
+
 async def timeout(
+
     interaction: discord.Interaction,
+
     user: discord.Member,
+
     minutes: int,
+
     reason: str = "No reason provided"
 ):
 
     if minutes < 1:
 
         await interaction.response.send_message(
+
             "❌ Duration must be at least 1 minute.",
+
             ephemeral=True
         )
 
         return
+
 
     if minutes > 40320:
 
         await interaction.response.send_message(
+
             "❌ Maximum timeout is 28 days.",
+
             ephemeral=True
         )
 
         return
 
+
     try:
 
         duration = timedelta(
+
             minutes=minutes
         )
 
         await user.timeout(
+
             duration,
+
             reason=reason
         )
 
         await interaction.response.send_message(
+
             (
+
                 f"⏱️ {user.mention} has been timed out "
                 f"for `{minutes}` minutes.\n"
+
                 f"Reason: `{reason}`"
             )
         )
@@ -1506,7 +1871,9 @@ async def timeout(
     except discord.Forbidden:
 
         await interaction.response.send_message(
+
             "❌ I cannot timeout that member.",
+
             ephemeral=True
         )
 
@@ -1516,25 +1883,39 @@ async def timeout(
 # =========================================================
 
 @bot.tree.command(
+
     name="blacklist",
+
     description="Blacklist a user."
 )
+
 @app_commands.describe(
+
     user="User to blacklist.",
+
     reason="Reason for blacklist."
 )
+
 @app_commands.checks.has_permissions(
+
     administrator=True
 )
+
 async def blacklist(
+
     interaction: discord.Interaction,
+
     user: discord.Member,
+
     reason: str = "No reason provided"
 ):
 
     await interaction.response.send_message(
+
         (
+
             f"🚫 {user.mention} has been blacklisted.\n"
+
             f"Reason: `{reason}`"
         )
     )
@@ -1545,21 +1926,31 @@ async def blacklist(
 # =========================================================
 
 @bot.tree.command(
+
     name="unblacklist",
+
     description="Remove a user from blacklist."
 )
+
 @app_commands.describe(
+
     user="User to remove from blacklist."
 )
+
 @app_commands.checks.has_permissions(
+
     administrator=True
 )
+
 async def unblacklist(
+
     interaction: discord.Interaction,
+
     user: discord.Member
 ):
 
     await interaction.response.send_message(
+
         f"✅ {user.mention} has been removed from the blacklist."
     )
 
@@ -1570,32 +1961,43 @@ async def unblacklist(
 
 @bot.tree.error
 async def on_app_command_error(
+
     interaction: discord.Interaction,
+
     error
 ):
 
     if isinstance(
+
         error,
+
         app_commands.errors.MissingPermissions
     ):
 
         if not interaction.response.is_done():
 
             await interaction.response.send_message(
+
                 "❌ You don't have permission to use this command.",
+
                 ephemeral=True
             )
 
         return
 
+
     print(
+
         f"Slash command error: {error}"
     )
+
 
     if not interaction.response.is_done():
 
         await interaction.response.send_message(
+
             "❌ An unexpected error occurred.",
+
             ephemeral=True
         )
 
@@ -1609,35 +2011,41 @@ async def on_ready():
 
     global views_registered
 
-    # Register persistent registration button
     if not views_registered:
 
         bot.add_view(
+
             ClanRegistrationView()
         )
 
         views_registered = True
 
+
     print(
+
         f"Logged in as {bot.user} "
         f"(ID: {bot.user.id})"
     )
 
     print(
+
         f"Connected to {len(bot.guilds)} server(s)"
     )
+
 
     try:
 
         synced = await bot.tree.sync()
 
         print(
+
             f"Synced {len(synced)} slash command(s)"
         )
 
     except Exception as e:
 
         print(
+
             f"Slash command sync error: {e}"
         )
 
@@ -1649,7 +2057,9 @@ async def on_ready():
 if not TOKEN:
 
     raise RuntimeError(
+
         "DISCORD_TOKEN environment variable is missing."
     )
+
 
 bot.run(TOKEN)
