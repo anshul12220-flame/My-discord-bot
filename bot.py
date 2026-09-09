@@ -721,22 +721,21 @@ except Exception as e:
     )
     return
                   
-        # =================================================
-        # VERIFY MEMBER CACHE
-        # =================================================
+    # =================================================
+    # VERIFY MEMBER CACHE
+    # =================================================
 
-        if clan_server.member_count is None:
+    if clan_server.member_count is None:
 
-            await interaction.followup.send(
+        await interaction.followup.send(
 
-                "❌ Discord did not provide the server member count. "
-                "Please try again.",
+            "❌ Discord did not provide the server member count. "
+            "Please try again.",
 
-                ephemeral=True
-            )
+            ephemeral=True
+        )
 
-            return
-
+        return
 
         cached_members = len(
             clan_server.members
