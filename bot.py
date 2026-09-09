@@ -1,5 +1,6 @@
 import os
 import re
+import asyncio
 import unicodedata
 from datetime import timedelta
 
@@ -679,61 +680,47 @@ class AddBotView(discord.ui.View):
 
 
         # =================================================
-        # MEMBER LOADING
-        # =================================================
+# MEMBER LOADING
+# =================================================
 
-        await interaction.followup.send(
+await interaction.followup.send(
+    "🔎 **FLAME is scanning your clan server...**\n\n"
+    "Please wait up to 12 seconds.",
+    ephemeral=True
+)
 
-            "🔎 **FLAME is scanning your clan server...**\n\n"
-            "Please wait while I load the server members.",
+try:
+    await asyncio.wait_for(
+        clan_server.chunk(cache=True),
+        timeout=12
+    )
 
-            ephemeral=True
-        )
+except asyncio.TimeoutError:
+    print(
+        f"Member scan timed out for {clan_server.id}"
+    )
 
+    await interaction.followup.send(
+        "❌ **Scan timed out.**\n\n"
+        "Discord did not finish loading the clan members "
+        "within 12 seconds.\n\n"
+        "Please try again.",
+        ephemeral=True
+    )
+    return
 
-        try:
+except Exception as e:
+    print(
+        f"Member chunk error for {clan_server.id}: {e}"
+    )
 
-            # Request the complete member list.
-            await clan_server.chunk(
-                cache=True
-            )
-
-        except Exception as e:
-
-            print(
-                f"Member chunk error for "
-                f"{clan_server.id}: {e}"
-            )
-
-            error_embed = discord.Embed(
-
-                title="Verification Failed",
-
-                description=(
-
-                    "❌ I couldn't load the complete member "
-                    "list of your clan server.\n\n"
-
-                    "This can happen if Discord's member "
-                    "data request times out.\n\n"
-
-                    "Please make sure **Server Members Intent** "
-                    "is enabled for FLAME and try again."
-                ),
-
-                color=discord.Color.red()
-            )
-
-            await interaction.followup.send(
-
-                embed=error_embed,
-
-                ephemeral=True
-            )
-
-            return
-
-
+    await interaction.followup.send(
+        "❌ **Scan failed.**\n\n"
+        "FLAME couldn't load the clan members.",
+        ephemeral=True
+    )
+    return
+                  
         # =================================================
         # VERIFY MEMBER CACHE
         # =================================================
