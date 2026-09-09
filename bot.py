@@ -678,7 +678,6 @@ class AddBotView(discord.ui.View):
 
             clan_server = best_server
 
-    
     # =================================================
     # MEMBER LOADING
     # =================================================
