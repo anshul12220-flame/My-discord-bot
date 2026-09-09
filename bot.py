@@ -679,47 +679,47 @@ class AddBotView(discord.ui.View):
             clan_server = best_server
 
 
-# =================================================
-# MEMBER LOADING
-# =================================================
-
-await interaction.followup.send(
-    "🔎 **FLAME is scanning your clan server...**\n\n"
-    "Please wait up to 12 seconds.",
-    ephemeral=True
-)
-
-try:
-    await asyncio.wait_for(
-        clan_server.chunk(cache=True),
-        timeout=12
-    )
-
-except asyncio.TimeoutError:
-    print(
-        f"Member scan timed out for {clan_server.id}"
-    )
+    # =================================================
+    # MEMBER LOADING
+    # =================================================
 
     await interaction.followup.send(
-        "❌ **Scan timed out.**\n\n"
-        "Discord did not finish loading the clan members "
-        "within 12 seconds.\n\n"
-        "Please try again.",
+        "🔎 **FLAME is scanning your clan server...**\n\n"
+        "Please wait up to 12 seconds.",
         ephemeral=True
     )
-    return
 
-except Exception as e:
-    print(
-        f"Member chunk error for {clan_server.id}: {e}"
-    )
+    try:
+        await asyncio.wait_for(
+            clan_server.chunk(cache=True),
+            timeout=12
+        )
 
-    await interaction.followup.send(
-        "❌ **Scan failed.**\n\n"
-        "FLAME couldn't load the clan members.",
-        ephemeral=True
-    )
-    return
+    except asyncio.TimeoutError:
+        print(
+            f"Member scan timed out for {clan_server.id}"
+        )
+
+        await interaction.followup.send(
+            "❌ **Scan timed out.**\n\n"
+            "Discord did not finish loading the clan members "
+            "within 12 seconds.\n\n"
+            "Please try again.",
+            ephemeral=True
+        )
+        return
+
+    except Exception as e:
+        print(
+            f"Member chunk error for {clan_server.id}: {e}"
+        )
+
+        await interaction.followup.send(
+            "❌ **Scan failed.**\n\n"
+            "FLAME couldn't load the clan members.",
+            ephemeral=True
+        )
+        return
                   
     # =================================================
     # VERIFY MEMBER CACHE
