@@ -687,9 +687,9 @@ await interaction.followup.send(
         "🔎 **FLAME is scanning your clan server...**\n\n"
         "Please wait up to 12 seconds.",
         ephemeral=True
-    )
+)
 
-    try:
+try:
         await asyncio.wait_for(
             clan_server.chunk(cache=True),
             timeout=12
