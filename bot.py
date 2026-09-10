@@ -88,7 +88,7 @@ REGION_KEYWORDS = {
 # HELPER FUNCTIONS
 # ============================================================
 
-def normalize_role_name(name: str) -> str:
+def normalize_role_name(name: str):
 
     name = unicodedata.normalize(
         "NFKC",
@@ -112,13 +112,11 @@ def normalize_role_name(name: str) -> str:
         flags=re.UNICODE
     )
 
-    name = re.sub(
+    return re.sub(
         r"\s+",
         " ",
         name
-    )
-
-    return name.strip()
+    ).strip()
 
 
 def find_region_roles(
@@ -157,14 +155,18 @@ def find_region_roles(
                     word in words
                     for word in key.split()
                 ):
+
                     matches.append(role)
+
                     break
 
             # Single-word region
             else:
 
                 if key in words:
+
                     matches.append(role)
+
                     break
 
     return list(
@@ -188,17 +190,17 @@ def count_region_members(
     }
 
     if not role_ids:
+
         return 0, roles
 
-    count = 0
-
-    for member in guild.members:
-
+    count = sum(
+        1
+        for member in guild.members
         if any(
             role.id in role_ids
             for role in member.roles
-        ):
-            count += 1
+        )
+    )
 
     return count, roles
 
@@ -596,10 +598,6 @@ class AddBotView(
         button: discord.ui.Button
     ):
 
-        # ----------------------------------------------------
-        # USER CHECK
-        # ----------------------------------------------------
-
         if (
             interaction.user.id
             != self.user_id
@@ -611,11 +609,6 @@ class AddBotView(
             )
 
             return
-
-
-        # ----------------------------------------------------
-        # GET SESSION
-        # ----------------------------------------------------
 
         session = pending_registrations.get(
             self.user_id
@@ -634,11 +627,6 @@ class AddBotView(
 
             return
 
-
-        # ----------------------------------------------------
-        # BLACKLIST CHECK
-        # ----------------------------------------------------
-
         if (
             self.user_id
             in blacklisted_users
@@ -651,11 +639,9 @@ class AddBotView(
 
             return
 
-
         await interaction.response.defer(
             ephemeral=True
         )
-
 
         # ====================================================
         # FIND SERVER OWNED BY APPLICANT
@@ -671,7 +657,6 @@ class AddBotView(
             == interaction.user.id
 
         ]
-
 
         if not owned_servers:
 
@@ -708,11 +693,10 @@ class AddBotView(
 
 
         # ====================================================
-        # CHOOSE BEST SERVER
+        # FIND BEST OWNED SERVER
         # ====================================================
 
         clan_server = owned_servers[0]
-
 
         if len(owned_servers) > 1:
 
@@ -751,7 +735,8 @@ class AddBotView(
         await interaction.followup.send(
 
             "🔎 **FLAME is scanning your clan server...**\n\n"
-            "Please wait up to **12 seconds**.",
+            "Loading clan members. Please wait...\n\n"
+            "The scan can take up to **90 seconds**.",
 
             ephemeral=True
         )
@@ -759,13 +744,15 @@ class AddBotView(
 
         try:
 
+            # Give Discord more time to send
+            # all member chunks.
             await asyncio.wait_for(
 
                 clan_server.chunk(
                     cache=True
                 ),
 
-                timeout=12
+                timeout=90
 
             )
 
@@ -780,9 +767,12 @@ class AddBotView(
             await interaction.followup.send(
 
                 "❌ **Scan timed out.**\n\n"
+
                 "Discord did not finish loading "
-                "the clan members within 12 seconds.\n\n"
-                "Please try again.",
+                "the clan members within **90 seconds**.\n\n"
+
+                "Make sure **Server Members Intent** "
+                "is enabled for FLAME and try again.",
 
                 ephemeral=True
             )
@@ -805,7 +795,10 @@ class AddBotView(
             await interaction.followup.send(
 
                 "❌ **Scan failed.**\n\n"
-                "FLAME couldn't load the clan members.",
+
+                "FLAME couldn't load the clan members.\n\n"
+
+                f"Error: `{type(e).__name__}`",
 
                 ephemeral=True
             )
@@ -819,7 +812,7 @@ class AddBotView(
 
 
         # ====================================================
-        # MEMBER CACHE CHECK
+        # VERIFY MEMBER CACHE
         # ====================================================
 
         expected_members = (
@@ -836,7 +829,8 @@ class AddBotView(
             await interaction.followup.send(
 
                 "❌ Discord did not provide "
-                "the server member count.\n"
+                "the server member count.\n\n"
+
                 "Please try again.",
 
                 ephemeral=True
@@ -857,7 +851,7 @@ class AddBotView(
                 (
                     "❌ **Member scan incomplete.**\n\n"
 
-                    f"Discord reported "
+                    f"Discord reports "
                     f"**{expected_members:,}** members, "
 
                     f"but FLAME loaded only "
@@ -880,7 +874,7 @@ class AddBotView(
 
 
         # ====================================================
-        # REGION VERIFICATION
+        # REGION SCAN
         # ====================================================
 
         region_results = {}
@@ -888,19 +882,21 @@ class AddBotView(
         for region in session.regions:
 
             count, roles = count_region_members(
+
                 clan_server,
+
                 region
+
             )
 
             region_results[region] = {
+
                 "count": count,
+
                 "roles": roles
+
             }
 
-
-        # ====================================================
-        # FIND FAILED REGIONS
-        # ====================================================
 
         failed_regions = {
 
@@ -916,7 +912,7 @@ class AddBotView(
 
 
         # ====================================================
-        # DENIED
+        # FAILED REGISTRATION
         # ====================================================
 
         if failed_regions:
@@ -935,14 +931,21 @@ class AddBotView(
                 )
 
                 if not role_names:
-                    role_names = "No matching region role found"
+
+                    role_names = (
+                        "No matching region role found"
+                    )
 
 
                 status = (
+
                     "❌"
+
                     if data["count"]
                     < MIN_REGION_MEMBERS
+
                     else "✅"
+
                 )
 
 
@@ -950,6 +953,7 @@ class AddBotView(
 
                     f"{status} **{region}:** "
                     f"{data['count']}/{MIN_REGION_MEMBERS} members\n"
+
                     f"   Roles: `{role_names}`"
 
                 )
@@ -972,6 +976,7 @@ class AddBotView(
                     f"{clan_server.name}\n\n"
 
                     "**Region Scan:**\n"
+
                     f"{result_text}\n\n"
 
                     f"Every selected region must have "
@@ -1023,12 +1028,14 @@ class AddBotView(
 
 
             await send_registration_log(
+
                 interaction.guild,
+
                 log
+
             )
 
 
-            # Leave after verification
             await leave_guild(
                 clan_server
             )
@@ -1043,7 +1050,7 @@ class AddBotView(
 
 
         # ====================================================
-        # APPROVED
+        # APPROVED REGISTRATION
         # ====================================================
 
         result_lines = []
@@ -1060,6 +1067,7 @@ class AddBotView(
             )
 
             if not role_names:
+
                 role_names = "No matching role"
 
 
@@ -1067,6 +1075,7 @@ class AddBotView(
 
                 f"✅ **{region}:** "
                 f"{data['count']} members\n"
+
                 f"   Roles: `{role_names}`"
 
             )
@@ -1089,6 +1098,7 @@ class AddBotView(
                 f"{clan_server.name}\n\n"
 
                 "**Region Scan:**\n"
+
                 f"{result_text}\n\n"
 
                 "Your clan has passed "
@@ -1106,10 +1116,6 @@ class AddBotView(
             ephemeral=True
         )
 
-
-        # ====================================================
-        # APPROVAL LOG
-        # ====================================================
 
         log = make_embed(
 
@@ -1144,15 +1150,15 @@ class AddBotView(
 
 
         await send_registration_log(
+
             interaction.guild,
+
             log
+
         )
 
 
-        # ====================================================
-        # LEAVE CLAN SERVER
-        # ====================================================
-
+        # Leave the clan server after scan
         await leave_guild(
             clan_server
         )
@@ -1218,10 +1224,7 @@ async def post_clan(
             "**Asia / NA / SA / EU / OC**.\n"
 
             "• You must be the **actual owner "
-            "of your clan's Discord server**.\n"
-
-            "• FLAME must be added to the clan server "
-            "so it can scan the server.\n\n"
+            "of your clan's Discord server**.\n\n"
 
             "Click the button below to register."
         ),
@@ -1343,45 +1346,73 @@ async def serverinfo(
 
 
     embed.add_field(
+
         name="Server ID",
+
         value=str(guild.id),
+
         inline=False
+
     )
 
+
     embed.add_field(
+
         name="Owner",
+
         value=f"<@{guild.owner_id}>",
+
         inline=True
+
     )
 
+
     embed.add_field(
+
         name="Members",
+
         value=str(guild.member_count),
+
         inline=True
+
     )
 
+
     embed.add_field(
+
         name="Channels",
+
         value=str(len(guild.channels)),
+
         inline=True
+
     )
 
+
     embed.add_field(
+
         name="Roles",
+
         value=str(len(guild.roles)),
+
         inline=True
+
     )
 
 
     if guild.icon:
 
         embed.set_thumbnail(
+
             url=guild.icon.url
+
         )
 
 
     await interaction.response.send_message(
+
         embed=embed
+
     )
 
 
@@ -1410,9 +1441,13 @@ async def userinfo(
 
 
     embed.add_field(
+
         name="User ID",
+
         value=str(user.id),
+
         inline=False
+
     )
 
 
@@ -1421,11 +1456,15 @@ async def userinfo(
         name="Created",
 
         value=discord.utils.format_dt(
+
             user.created_at,
+
             "F"
+
         ),
 
         inline=False
+
     )
 
 
@@ -1434,24 +1473,22 @@ async def userinfo(
         name="Joined",
 
         value=(
+
             discord.utils.format_dt(
+
                 user.joined_at,
+
                 "F"
+
             )
+
             if user.joined_at
+
             else "Unknown"
+
         ),
 
         inline=False
-    )
-
-
-    roles = ", ".join(
-
-        role.mention
-
-        for role
-        in user.roles[1:]
 
     )
 
@@ -1460,9 +1497,23 @@ async def userinfo(
 
         name="Roles",
 
-        value=roles or "None",
+        value=(
+
+            ", ".join(
+
+                role.mention
+
+                for role
+                in user.roles[1:]
+
+            )
+
+            or "None"
+
+        ),
 
         inline=False
+
     )
 
 
@@ -1474,7 +1525,9 @@ async def userinfo(
 
 
     await interaction.response.send_message(
+
         embed=embed
+
     )
 
 
@@ -1489,8 +1542,11 @@ def can_moderate(
     return (
 
         isinstance(
+
             interaction.user,
+
             discord.Member
+
         )
 
         and
@@ -1535,7 +1591,9 @@ async def kick(
     try:
 
         await member.kick(
+
             reason=reason
+
         )
 
 
@@ -1592,7 +1650,9 @@ async def ban(
     try:
 
         await member.ban(
+
             reason=reason
+
         )
 
 
@@ -1661,6 +1721,7 @@ async def timeout_member(
             ),
 
             reason=reason
+
         )
 
 
@@ -1765,7 +1826,7 @@ async def unblacklist(
     await interaction.response.send_message(
 
         f"✅ {user.mention} has been "
-        "removed from the clan registration blacklist."
+        "removed from clan registration blacklist."
 
     )
 
@@ -1827,22 +1888,27 @@ async def on_ready():
         f"{bot.user} ({bot.user.id})"
     )
 
+
     print(
         f"Connected to "
         f"{len(bot.guilds)} server(s)."
     )
 
 
-    # Persistent registration button
-
     if not getattr(
+
         bot,
+
         "_registration_view_added",
+
         False
+
     ):
 
         bot.add_view(
+
             ClanRegistrationView()
+
         )
 
         bot._registration_view_added = True
@@ -1852,15 +1918,21 @@ async def on_ready():
 
         synced = await bot.tree.sync()
 
+
         print(
+
             f"Synced "
             f"{len(synced)} slash command(s)."
+
         )
+
 
     except Exception as e:
 
         print(
+
             f"Slash command sync failed: {e}"
+
         )
 
 
@@ -1885,13 +1957,18 @@ async def on_app_command_error(
 
 
     if isinstance(
+
         error,
+
         app_commands.MissingPermissions
+
     ):
 
         message = (
+
             "❌ You don't have permission "
             "to use this command."
+
         )
 
 
@@ -1904,6 +1981,7 @@ async def on_app_command_error(
                 message,
 
                 ephemeral=True
+
             )
 
         else:
@@ -1913,13 +1991,16 @@ async def on_app_command_error(
                 message,
 
                 ephemeral=True
+
             )
 
 
     except Exception as e:
 
         print(
+
             f"Could not send error response: {e}"
+
         )
 
 
