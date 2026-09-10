@@ -643,89 +643,71 @@ class AddBotView(
             ephemeral=True
         )
 
-        # ====================================================
-        # FIND SERVER OWNED BY APPLICANT
-        # ====================================================
+# ====================================================
+# FIND CLAN SERVER BY EXACT CLAN NAME
+# ====================================================
 
-        owned_servers = [
-
-            guild
-
-            for guild in bot.guilds
-
-            if guild.owner_id
-            == interaction.user.id
-
-        ]
-
-        if not owned_servers:
-
-            await interaction.followup.send(
-
-                embed=make_embed(
-
-                    "❌ Clan Server Not Found",
-
-                    (
-                        "FLAME could not find a server where "
-                        "you are the actual Discord owner.\n\n"
-
-                        "Make sure:\n"
-                        "• You are the actual server owner.\n"
-                        "• FLAME is inside your clan server.\n"
-                        "• You have the **👑 yellow owner crown**.\n"
-                        "• You clicked **I've Added FLAME** "
-                        "after adding the bot."
-                    ),
-
-                    discord.Color.red()
-                ),
-
-                ephemeral=True
-            )
-
-            pending_registrations.pop(
-                self.user_id,
-                None
-            )
-
-            return
+def normalize_server_name(name: str) -> str:
+    return " ".join(name.casefold().split())
 
 
-        # ====================================================
-        # FIND BEST OWNED SERVER
-        # ====================================================
+wanted_name = normalize_server_name(
+    session.clan_name
+)
 
-        clan_server = owned_servers[0]
+clan_server = None
 
-        if len(owned_servers) > 1:
+for guild in bot.guilds:
 
-            scored_servers = []
+    # Server name must match the clan name
+    # Case does not matter.
+    if normalize_server_name(guild.name) != wanted_name:
+        continue
 
-            for guild in owned_servers:
+    # Applicant must be the REAL Discord server owner.
+    # This corresponds to the yellow crown.
+    if guild.owner_id != interaction.user.id:
+        continue
 
-                score = 0
+    clan_server = guild
+    break
 
-                for region in session.regions:
 
-                    if find_region_roles(
-                        guild,
-                        region
-                    ):
+# ====================================================
+# CLAN SERVER NOT FOUND
+# ====================================================
 
-                        score += 1
+if clan_server is None:
 
-                scored_servers.append(
-                    (
-                        score,
-                        guild
-                    )
-                )
+    await interaction.followup.send(
+        embed=make_embed(
+            "❌ Clan Server Not Found",
+            (
+                f"FLAME could not find a server matching "
+                f"the clan name:\n\n"
+                f"**{session.clan_name}**\n\n"
 
-            clan_server = max(
-                scored_servers,
-                key=lambda item: item[0]
-            )[1]
+                "Make sure:\n"
+                "• Your clan server name matches the clan name "
+                "you entered.\n"
+                "• Capitalization does not matter.\n"
+                "• FLAME is inside that server.\n"
+                "• You are the actual server owner.\n"
+                "• You have the **👑 yellow owner crown**.\n"
+                "• You clicked **I've Added FLAME** "
+                "after adding the bot."
+            ),
+            discord.Color.red()
+        ),
+        ephemeral=True
+    )
+
+    pending_registrations.pop(
+        self.user_id,
+        None
+    )
+
+    return
 
 
         # ====================================================
