@@ -114,4 +114,5 @@ async def blacklist(
             ephemeral=True
         )
 
-bot.run(TOKEN)
+import os
+bot.run(os.getenv("DISCORD_TOKEN"))
