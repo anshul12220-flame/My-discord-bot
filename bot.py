@@ -35,29 +35,39 @@ async def blacklist(
     interaction: discord.Interaction,
     member: discord.Member,
     channel: discord.TextChannel,
-    role: discord.Role,
     reason: str = "No reason provided"
 ):
-    # Prevent selecting @everyone
-    if role == interaction.guild.default_role:
+    staff_role = discord.utils.get(
+        interaction.guild.roles,
+        name="Staff"
+    )
+
+    if staff_role is None:
         await interaction.response.send_message(
-            "❌ You cannot select the **@everyone** role.",
+            "❌ The **Staff** role doesn't exist.",
             ephemeral=True
         )
         return
 
-    # Make sure the bot can manage the selected role
-    if role >= interaction.guild.me.top_role:
+    # Staff and higher roles can use this command
+    if not any(
+        role.position >= staff_role.position
+        for role in interaction.user.roles
+    ):
         await interaction.response.send_message(
-            "❌ I cannot give that role because it is higher than or equal to my highest role.",
+            "❌ You need the **Staff** role or a higher role to use this command.",
             ephemeral=True
         )
         return
 
-    # Make sure the bot can manage the member
-    if member.top_role >= interaction.guild.me.top_role:
+    blacklist_role = discord.utils.get(
+        interaction.guild.roles,
+        name="Blacklist"
+    )
+
+    if blacklist_role is None:
         await interaction.response.send_message(
-            "❌ I cannot manage this member because their highest role is higher than or equal to mine.",
+            "❌ The **Blacklist** role doesn't exist.",
             ephemeral=True
         )
         return
@@ -65,9 +75,8 @@ async def blacklist(
     try:
         # Remove all current roles except @everyone
         roles_to_remove = [
-            current_role
-            for current_role in member.roles
-            if current_role != interaction.guild.default_role
+            role for role in member.roles
+            if role != interaction.guild.default_role
         ]
 
         if roles_to_remove:
@@ -76,9 +85,9 @@ async def blacklist(
                 reason=reason
             )
 
-        # Give the selected role
+        # Give Blacklist role
         await member.add_roles(
-            role,
+            blacklist_role,
             reason=reason
         )
 
@@ -107,12 +116,6 @@ async def blacklist(
         )
 
         embed.add_field(
-            name="Role",
-            value=role.mention,
-            inline=False
-        )
-
-        embed.add_field(
             name="Reason",
             value=reason,
             inline=False
@@ -123,14 +126,13 @@ async def blacklist(
 
         await interaction.response.send_message(
             f"🔨 {member.mention} has been blacklisted.\n"
-            f"Role given: {role.mention}\n"
             f"Log sent to {channel.mention}.",
             ephemeral=True
         )
 
     except discord.Forbidden:
         await interaction.response.send_message(
-            "❌ I don't have permission to manage this member, role, or send the log.",
+            "❌ I don't have permission to manage this member or send the log.",
             ephemeral=True
         )
 @bot.tree.command(name="unblacklist", description="Remove the blacklist from a member")
